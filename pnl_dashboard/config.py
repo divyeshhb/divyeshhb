@@ -30,6 +30,36 @@ COST_COMPONENTS = {
 }
 
 # --------------------------------------------------------------------------- #
+# 1b. Currency basis & bps                                                    #
+# --------------------------------------------------------------------------- #
+# PNL_USD = PNL_LCY * FxRate, i.e. FxRate converts local currency -> USD.
+# The cost columns below are reported in LOCAL CURRENCY, so they must be
+# multiplied by FxRate to express them in USD (and for the bps formula).
+# `PNL_USD`, `Value_USD`, `Dollar_Traded` are already in USD.
+LOCAL_CCY_COLUMNS = [
+    "TC", "OC", "TC_Trade", "TC_Trade_VWAP", "TC_Trade_ExToClose",
+    "TC_Commission", "ModelSlippage", "ModelSlippage_AM", "ModelSlippage_PM",
+    "Commission",
+]
+# Already-USD columns (never multiplied by FxRate).
+USD_COLUMNS = ["PNL_USD", "Value_USD", "Dollar_Traded"]
+
+# The $ view sums money across many currencies, so costs must be converted to
+# USD first (otherwise EUR + JPY + KRW are added blindly). Set False only if you
+# deliberately want the raw, un-converted local-currency column sums.
+DOLLAR_VIEW_FX_CONVERT_COSTS = True
+
+# bps = metric_in_USD / AUM(date) * 10_000   (AUM is the strategy AUM for the day)
+BPS_SCALE = 10_000.0
+
+# AUM is keyed by its own AccountId; map the PnL account -> the AUM account that
+# represents the same strategy. If a PnL account is absent here, AUM is joined
+# on Date only (single-strategy feed).
+PNL_TO_AUM_ACCOUNT = {
+    631: 630,   # MACEQ trading account 631  <-> AUM account 630
+}
+
+# --------------------------------------------------------------------------- #
 # 2. Labels / grouping                                                        #
 # --------------------------------------------------------------------------- #
 ASSET_CLASS_NAMES = {

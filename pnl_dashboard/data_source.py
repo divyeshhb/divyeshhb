@@ -5,9 +5,10 @@ Data access layer for the PnL dashboard.
 
 `fetch_pnl_data(start_date, end_date, account_id)` must return a pandas
 DataFrame whose schema matches `pnl_data` exactly (see config.REQUIRED_COLUMNS).
-The current implementation reads the sample Excel so the dashboard runs
-out-of-the-box; replace the body of `_load_from_sql` with your query and flip
-`USE_SQL = True`.
+`fetch_aum(start_date, end_date, account_id)` returns daily strategy AUM.
+The current implementations read the sample Excels so the dashboard runs
+out-of-the-box; replace the bodies of `_load_from_sql` / `_load_aum_from_sql`
+with your queries and flip `USE_SQL = True`.
 """
 from __future__ import annotations
 
@@ -17,13 +18,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import REQUIRED_COLUMNS
+from config import REQUIRED_COLUMNS, PNL_TO_AUM_ACCOUNT
 
 # Flip to True once the SQL query below is wired up.
 USE_SQL = False
 
-# Fallback sample file (the workbook you provided), used when USE_SQL is False.
+# Fallback sample files (the workbooks you provided), used when USE_SQL is False.
 SAMPLE_DATA_PATH = Path(__file__).parent / "data" / "sample_pnl_data.xlsx"
+SAMPLE_AUM_PATH = Path(__file__).parent / "data" / "sample_aumdetails.xlsx"
 
 
 # --------------------------------------------------------------------------- #
@@ -143,6 +145,64 @@ def _validate(df: pd.DataFrame) -> None:
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
         raise ValueError(f"fetch_pnl_data is missing required columns: {missing}")
+
+
+# --------------------------------------------------------------------------- #
+# AUM                                                                          #
+# --------------------------------------------------------------------------- #
+def fetch_aum(
+    start_date: str | date,
+    end_date: str | date,
+    account_id: int | None = None,
+) -> pd.Series:
+    """Return a Series of daily strategy AUM indexed by date (one value per day).
+
+    Columns expected from source: AccountId, AUMDetailsId, Date (with timestamp),
+    AUMAmount. When a date has several rows, the LATEST TIMESTAMP wins.
+
+    >>> Plug your SQL here too (see _load_aum_from_sql). <<<
+    """
+    start, end = pd.to_datetime(start_date), pd.to_datetime(end_date)
+    aum_account = PNL_TO_AUM_ACCOUNT.get(account_id, account_id)
+
+    if USE_SQL:
+        df = _load_aum_from_sql(start, end, aum_account)
+    else:
+        df = _load_aum_from_sample(aum_account)
+
+    df = df.copy()
+    df["Date"] = pd.to_datetime(df["Date"])
+    df["Day"] = df["Date"].dt.normalize()                       # calendar date
+    df = df.sort_values(["Day", "Date"])                        # latest ts last
+    latest = df.groupby("Day", as_index=True).tail(1)           # keep latest ts
+    s = latest.set_index("Day")["AUMAmount"].astype(float).sort_index()
+    s = s[(s.index >= start.normalize()) & (s.index <= end.normalize())]
+    s.name = "AUM"
+    return s
+
+
+def _load_aum_from_sql(start, end, aum_account) -> pd.DataFrame:
+    """Replace with your AUM query (mirror of _load_from_sql).
+
+        SELECT AccountId, AUMDetailsId, Date, AUMAmount
+        FROM   aumdetails
+        WHERE  Date BETWEEN :start AND :end
+          AND  (:acct IS NULL OR AccountId = :acct)
+    """
+    raise NotImplementedError("Wire up your AUM query in _load_aum_from_sql.")
+
+
+def _load_aum_from_sample(aum_account) -> pd.DataFrame:
+    if not SAMPLE_AUM_PATH.exists():
+        raise FileNotFoundError(
+            f"Sample AUM not found at {SAMPLE_AUM_PATH}. Add it (the aumdetails "
+            f"workbook) or implement _load_aum_from_sql() and set USE_SQL = True."
+        )
+    df = pd.read_excel(SAMPLE_AUM_PATH)
+    if aum_account is not None and "AccountId" in df.columns \
+            and (df["AccountId"] == aum_account).any():
+        df = df[df["AccountId"] == aum_account]
+    return df
 
 
 def available_date_range(account_id: int | None = None) -> tuple[date, date]:

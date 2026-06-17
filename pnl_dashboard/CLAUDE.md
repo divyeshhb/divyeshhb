@@ -55,6 +55,22 @@ Sample/reference data characteristics (account 631, what we built against):
 - `Commission`, `EB_ExecutionCost` populated; `Dividend`, `SwapNPV_TR`,
   `CH_ClearingCost`, `PB_PerTradeCost` are all zero in the sample.
 
+### AUM & the USD/bps toggle (implemented)
+- A second feed, **`aumdetails`** (`fetch_aum`), gives daily strategy AUM:
+  `AccountId, AUMDetailsId, Date (with timestamp), AUMAmount`. AUM is
+  `AccountId 630`; PnL is `631` → mapped via `config.PNL_TO_AUM_ACCOUNT`,
+  effectively joined on date. **Duplicate dates: take the latest timestamp**
+  (`AUMDetailsId` is NOT reliably ordered, so sort by the Date timestamp).
+- **Cost columns are LOCAL CURRENCY.** `PNL_USD = PNL_LCY × FxRate`. The cost
+  columns (`config.LOCAL_CCY_COLUMNS`: TC, OC, TC_Trade*, TC_Commission,
+  ModelSlippage*, Commission) are local-ccy and are multiplied by `FxRate` to get
+  USD. `PNL_USD/Value_USD/Dollar_Traded` are already USD. Verified via KRW name
+  (TC 568.89 KRW ≈ $0.38, not $568).
+- **Toggle** (top of page): USD vs **bps = metric_USD / AUM(date) × 10,000**.
+  Implemented in pure CSS/JS (`body.show-bps` toggles `.v-usd`/`.v-bps`); charts
+  are rendered in both lenses and resized on switch. The bps denominator is now
+  **AUM**, not Value_USD.
+
 ### Three reporting lenses
 - **USD** — actual dollars.
 - **Bps** — per traded notional.

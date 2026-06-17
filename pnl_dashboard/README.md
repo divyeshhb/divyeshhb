@@ -33,6 +33,22 @@ fetch_pnl_data(start_date, end_date, account_id) -> pd.DataFrame
 
 Nothing else changes — metrics and rendering read whatever that function returns.
 
+## USD / bps toggle
+
+A toggle at the top switches every number and chart between two lenses:
+
+- **USD** — money in USD. Cost columns (`TC`, `OC`, `ModelSlippage`, …) are in
+  **local currency** in the feed, so they are converted with `FxRate`
+  (`PNL_USD = PNL_LCY × FxRate`). `PNL_USD`, `Value_USD`, `Dollar_Traded` are
+  already USD. (Set `config.DOLLAR_VIEW_FX_CONVERT_COSTS = False` to show raw,
+  un-converted local-ccy sums instead — not recommended, mixes currencies.)
+- **bps** — `metric_in_USD / AUM(date) × 10,000`, i.e. bps of the strategy's AUM
+  for that day. Equivalent to the formula: `column × FxRate / AUM × 10,000`.
+
+AUM comes from `fetch_aum()` (see `data_source.py`). When a date has several AUM
+rows, the **latest timestamp** wins. AUM `AccountId` is mapped to the PnL account
+via `config.PNL_TO_AUM_ACCOUNT` (e.g. PnL 631 → AUM 630).
+
 ## What's on the dashboard
 
 - **Headline KPIs** for the as-of trade date: net PnL (USD + bps), transaction
