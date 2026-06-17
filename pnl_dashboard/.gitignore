@@ -1,0 +1,8 @@
+# generated dashboard output
+pnl_dashboard.html
+# sample/cache data (provided separately; not source)
+data/*.xlsx
+data/*.parquet
+# python
+__pycache__/
+*.pyc
