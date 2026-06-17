@@ -1,5 +1,8 @@
-pandas>=2.0
-plotly>=5.20
-openpyxl>=3.1        # only needed for the Excel sample fallback
-pyarrow>=14          # optional: parquet cache for the sample data
-# sqlalchemy>=2.0     # uncomment when you wire up the SQL data source
+# All of these are ALREADY in your environment — nothing new to install.
+# Versions below are the ones you have; the code is written to work with them.
+pandas==1.2.4
+plotly==5.13.0
+openpyxl==3.0.7        # reads the .xlsx sample fallback
+pyarrow==11.0.0        # optional: parquet cache for the sample data
+SQLAlchemy==1.4.15     # optional: only if you use SQLAlchemy in _load_from_sql
+# psycopg2 / pyodbc are also available if you connect via those drivers.

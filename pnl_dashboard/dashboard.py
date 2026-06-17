@@ -16,6 +16,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
+from plotly.offline import get_plotlyjs
 
 import config
 import metrics
@@ -225,7 +226,12 @@ def build_html(df: pd.DataFrame, start: str, end: str) -> str:
     generated = datetime.now().strftime("%d-%b-%Y %H:%M")
     period_pnl = daily["PNL_USD"].sum()
 
+    # Embed Plotly.js inline (from your installed plotly) so the HTML renders
+    # with no internet / no CDN — important on locked-down machines.
+    plotlyjs = '<script type="text/javascript">' + get_plotlyjs() + '</script>'
+
     return _PAGE.format(
+        plotlyjs=plotlyjs,
         account=account, as_of=as_of.strftime("%d-%b-%Y"),
         start=pd.to_datetime(start).strftime("%d-%b-%Y"),
         end=pd.to_datetime(end).strftime("%d-%b-%Y"),
@@ -276,7 +282,7 @@ _PAGE = """<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PnL Dashboard — {account}</title>
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+{plotlyjs}
 <style>
  :root{{--ink:#1f2d3d;--mute:#7b8794;--accent:#1f4e79;--line:#e4e8ee;--bg:#f5f7fa;}}
  *{{box-sizing:border-box}}
