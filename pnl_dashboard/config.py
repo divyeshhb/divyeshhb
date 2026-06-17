@@ -21,9 +21,9 @@ REQUIRED_COLUMNS = [
 ]
 
 # Metrics shown in the cost-decomposition waterfall (component -> label).
-# These sum (approximately) to the reported total transaction cost `TC`.
+# Trade cost uses the VWAP benchmark to stay consistent with the headline TC.
 COST_COMPONENTS = {
-    "TC_Trade": "Trade cost",
+    "TC_Trade_VWAP": "Trade cost (VWAP)",
     "TC_Commission": "Commission",
     "ModelSlippage": "Model slippage",
     "OC": "Opportunity cost",
@@ -51,6 +51,13 @@ DOLLAR_VIEW_FX_CONVERT_COSTS = True
 
 # bps = metric_in_USD / AUM(date) * 10_000   (AUM is the strategy AUM for the day)
 BPS_SCALE = 10_000.0
+
+# Which column to display as "TC" / "Transaction cost" in the headline KPI,
+# the winners/losers, country and instrument tables, and the high-cost flag.
+# The feed's `TC` is a broad total; the desk reports execution cost vs the VWAP
+# benchmark, so we show TC_Trade_VWAP. (The cost waterfall still shows the full
+# component decomposition separately.)
+TC_DISPLAY_COLUMN = "TC_Trade_VWAP"
 
 # AUM is keyed by its own AccountId; map the PnL account -> the AUM account that
 # represents the same strategy. If a PnL account is absent here, AUM is joined

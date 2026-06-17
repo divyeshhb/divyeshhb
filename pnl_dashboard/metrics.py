@@ -108,15 +108,16 @@ def group_totals(df: pd.DataFrame, by: str, aum_day: float | None = None) -> pd.
     usd_cols = [c for c in SUM_COLS_USD.values() if c in df.columns]
     g = df.groupby(by)[usd_cols].sum()
     g.columns = [k for k, v in SUM_COLS_USD.items() if v in df.columns]
+    g["TC_disp"] = g[config.TC_DISPLAY_COLUMN]
     if aum_day:
         g["PNL_bps"] = g["PNL_USD"] / aum_day * config.BPS_SCALE
-        g["TC_bps"] = g["TC"] / aum_day * config.BPS_SCALE
+        g["TC_bps"] = g["TC_disp"] / aum_day * config.BPS_SCALE
     return g.sort_values("PNL_USD", ascending=False)
 
 
 def kpi_summary(df_day: pd.DataFrame, aum_day: float | None) -> dict:
     pnl = _usd_col(df_day, "PNL_USD").sum()
-    tc = _usd_col(df_day, "TC").sum()
+    tc = _usd_col(df_day, config.TC_DISPLAY_COLUMN).sum()
     oc = _usd_col(df_day, "OC").sum()
     ms = _usd_col(df_day, "ModelSlippage").sum()
     comm = _usd_col(df_day, "TC_Commission").sum()
@@ -154,7 +155,7 @@ def cost_waterfall(df_day: pd.DataFrame, aum_day: float | None):
 def winners_losers(df_day: pd.DataFrame, aum_day: float | None, n: int = config.TOP_N):
     d = df_day.copy()
     d["PNL_disp"] = _usd_col(d, "PNL_USD")
-    d["TC_disp"] = _usd_col(d, "TC")
+    d["TC_disp"] = _usd_col(d, config.TC_DISPLAY_COLUMN)
     d["PNL_bps"] = d["PNL_disp"] / aum_day * config.BPS_SCALE if aum_day else np.nan
     d["TC_bps"] = d["TC_disp"] / aum_day * config.BPS_SCALE if aum_day else np.nan
     ranked = d.sort_values("PNL_disp", ascending=False)
@@ -171,7 +172,7 @@ def exceptions(df: pd.DataFrame, as_of: pd.Timestamp, aum_day: float | None) -> 
     today = df[df["Date"] == as_of].copy()
     hist["PNL_disp"] = _usd_col(hist, "PNL_USD")
     today["PNL_disp"] = _usd_col(today, "PNL_USD")
-    today["TC_disp"] = _usd_col(today, "TC")
+    today["TC_disp"] = _usd_col(today, config.TC_DISPLAY_COLUMN)
     today["OC_disp"] = _usd_col(today, "OC")
 
     stats = hist.groupby("Ticker")["PNL_disp"].agg(["mean", "std"])

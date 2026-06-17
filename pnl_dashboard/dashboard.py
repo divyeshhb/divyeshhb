@@ -112,7 +112,7 @@ def chart_daily_bars(daily) -> str:
 
 
 def _waterfall(wf, total, value_key, title, prefix, fmt):
-    labels = wf["component"].tolist() + ["Reported TC"]
+    labels = wf["component"].tolist() + ["Total cost"]
     values = wf[value_key].tolist() + [total]
     measure = ["relative"] * len(wf) + ["total"]
     fig = go.Figure(go.Waterfall(
@@ -126,9 +126,13 @@ def _waterfall(wf, total, value_key, title, prefix, fmt):
     return _fig_div(fig)
 
 
-def chart_cost_waterfall(wf, tc_usd, tc_bps) -> str:
-    usd = _waterfall(wf, tc_usd, "usd", "Transaction-cost breakdown (USD)", "$", ",.0s")
-    bps = _waterfall(wf, tc_bps, "bps", "Transaction-cost breakdown (bps of AUM)", "", ",.1f")
+def chart_cost_waterfall(wf) -> str:
+    # Total = sum of the components shown, so the waterfall is always internally
+    # consistent (independent of which column drives the headline TC KPI).
+    usd = _waterfall(wf, wf["usd"].sum(), "usd",
+                     "Cost breakdown (USD)", "$", ",.0s")
+    bps = _waterfall(wf, wf["bps"].sum(), "bps",
+                     "Cost breakdown (bps of AUM)", "", ",.1f")
     return _views(usd, bps)
 
 
@@ -210,7 +214,7 @@ def table_country(by_country, aum) -> str:
         rows.append([
             f'<td>{idx}</td>',
             num_cell(r["PNL_USD"], r.get("PNL_bps", np.nan)),
-            num_cell(r["TC"], r.get("TC_bps", np.nan)),
+            num_cell(r["TC_disp"], r.get("TC_bps", np.nan)),
             num_cell(abs(r["Value_USD"]), gross_bps),
         ])
     return _table(["Country", "PnL", "TC", "Gross exposure"], rows)
@@ -267,7 +271,7 @@ def build_html(df: pd.DataFrame, aum: pd.Series, start: str, end: str) -> str:
     account = df_day["Account"].iloc[0] if len(df_day) else ""
     kpis = "".join([
         _kpi_card("Net PnL (day)", k["pnl_usd"], k["pnl_bps"], "PnL"),
-        _kpi_card("Transaction cost", k["tc_usd"], k["tc_bps"], "TC (all components)"),
+        _kpi_card("Transaction cost", k["tc_usd"], k["tc_bps"], "TC vs VWAP"),
         _kpi_card("Model slippage", k["ms_usd"], k["ms_bps"], "vs model price"),
         _kpi_card("Opportunity cost", k["oc_usd"], k["oc_bps"], "missed / partial fills"),
         _kpi_card("Gross exposure", k["gross_exposure"], k["gross_bps"],
@@ -293,7 +297,7 @@ def build_html(df: pd.DataFrame, aum: pd.Series, start: str, end: str) -> str:
         period_pnl_cls=_cls(period_pnl_usd),
         kpis=kpis, exceptions=table_exceptions(ex),
         chart_cum=chart_cumulative(daily), chart_bars=chart_daily_bars(daily),
-        chart_waterfall=chart_cost_waterfall(wf, k["tc_usd"], k["tc_bps"]),
+        chart_waterfall=chart_cost_waterfall(wf),
         chart_ampm=chart_ampm(daily), chart_country=chart_country(by_country),
         table_country=table_country(by_country, aum_day),
         winners_losers=table_winners_losers(df_day, aum_day),
@@ -398,8 +402,9 @@ _PAGE = """<!DOCTYPE html>
     <div class="row2"><div>{chart_cum}</div><div>{chart_bars}</div></div></section>
   <section><h2>Cost & execution quality — {as_of}</h2>
     <div class="row2"><div>{chart_waterfall}</div><div>{chart_ampm}</div></div>
-    <p class="note">Components (trade cost, commission, model slippage, opportunity cost)
-    approximately reconcile to reported TC. AM/PM split addresses “did we trade at the right time?”.</p></section>
+    <p class="note">Transaction cost is shown vs the VWAP benchmark (TC_Trade_VWAP).
+    The breakdown stacks trade cost (VWAP), commission, model slippage and opportunity cost.
+    AM/PM split addresses “did we trade at the right time?”.</p></section>
   <section><h2>Geographic breakdown — {as_of}</h2>
     <div class="row2"><div>{chart_country}</div><div>{table_country}</div></div></section>
   <section><h2>Top movers — {as_of}</h2><div class="row2">{winners_losers}</div></section>
